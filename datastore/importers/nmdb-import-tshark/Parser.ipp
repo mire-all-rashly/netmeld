@@ -55,6 +55,12 @@ Parser<Iter>::Parser() : Parser::base_type(start)
     (lldpPortId, &value)
     (lldpPortDesc, &value)
     (lldpIeee8021PortVlanId, &value)
+    (ubdpHostname, &value)
+    (ubdpMacAddress, &value)
+    (ubdpIpAddress, &value)
+    (ubdpProduct, &value)
+    (ubdpFirmware, &value)
+    (ubdpFirmwareFull, &value)
     (ipSrc, &value)
     (ipv6Src, &value)
     (ipv6SrcSaMac, &value)
@@ -222,6 +228,18 @@ Parser<Iter>::setPacketData(const std::string& _key, const std::string& _val)
     } else {
       pd[_key] = _val;
     }
+  } else if (ubdpMacAddress == _key) {
+    if (!pd.count(_key)) {
+      pd[_key] = VecTupStrStrType();
+    }
+    auto& vec = std::any_cast<VecTupStrStrType&>(pd[_key]);
+    vec.push_back(std::make_tuple(_val, ""));
+  } else if (ubdpIpAddress == _key) {
+    if (!pd.count(ubdpMacAddress)) {
+      LOG_DEBUG << "found ubdp.ip before ubdp.mac: " << _key << '\n';
+    }
+    auto& vec = std::any_cast<VecTupStrStrType&>(pd[ubdpMacAddress]);
+    std::get<1>(vec.back()) = _val;
   } else if (sllSrc == _key) {
     pd[ethSrc] = _val; // handle as ethSrc
   } else if (pd.count(_key)) {
@@ -434,6 +452,37 @@ Parser<Iter>::processPacket(PacketData& _pd)
     status = true;
   }
 
+  // ===== UBDP =====
+  if (_pd.count(ubdpHostname)) {
+    const auto& ifaceName {s1(ubdpHostname)};
+    auto& iface {d.ifaces[ifaceName]};
+    iface.setDiscoveryProtocol(true);
+    iface.setState(true);
+    iface.setDescription(
+        s1(ubdpProduct) + " -- " + s1(ubdpFirmwareFull)
+        );
+    //nmdo::MacAddress macAddr {s1(ubdpMacAddress)};
+    //iface.setMacAddress(macAddr);
+    //nmdo::IpAddress ipAddr {s1(ubdpIpAddress), TSHARK_REASON};
+    //iface.addIpAddress(ipAddr);
+    //iface.setName(s1(cdpPortid));
+    //iface.setMediaType(s1(cdpPortid));
+    //iface.(s1(cdpNativeVlan));
+    status = true;
+  }
+  if (_pd.count(ubdpMacAddress)) {
+    for (const auto& [mac, ip] : v2(ubdpMacAddress)) {
+      auto& macAddr {d.macAddrs[mac]};
+      macAddr.setMac(mac);
+      macAddr.setResponding(true);
+      if (!ip.empty()) {
+        nmdo::IpAddress  ipAddr  {ip, TSHARK_REASON};
+        ipAddr.addAlias(s1(ubdpHostname), TSHARK_REASON);
+        macAddr.addIp(ipAddr);
+      }
+    }
+  }
+
   // ===== VLAN =====
   if (_pd.count(vlanId)) {
     for (const auto& vId : std::any_cast<VecStrType>(_pd[vlanId])) {
@@ -469,6 +518,8 @@ Parser<Iter>::processPacket(PacketData& _pd)
   if (status) {
     DataContainerSingleton::getInstance().insert(d);
   }
+
+//  LOG_INFO << _pd << '\n';
 
   return status;
 }
