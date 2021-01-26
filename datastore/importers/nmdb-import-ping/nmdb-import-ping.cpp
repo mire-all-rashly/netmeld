@@ -24,105 +24,47 @@
 // Maintained by Sandia National Laboratories <Netmeld@sandia.gov>
 // =============================================================================
 
-#include <netmeld/datastore/objects/IpAddress.hpp>
-#include <netmeld/datastore/parsers/ParserIpAddress.hpp>
 #include <netmeld/datastore/tools/AbstractImportTool.hpp>
+
+#include "Parser.hpp"
 
 namespace nmdo = netmeld::datastore::objects;
 namespace nmdp = netmeld::datastore::parsers;
 namespace nmdt = netmeld::datastore::tools;
 
-
-typedef std::vector<nmdo::IpAddress>       Result;
-
-class Parser :
-  public qi::grammar<nmdp::IstreamIter, Result(), qi::ascii::blank_type>
-{
-  public:
-    Parser() : Parser::base_type(start)
-    {
-      start =
-        pingResponsesHeader >> pingResponses >> *qi::eol >>
-        -(pingStatisticsHeader >> pingStatistics >> *qi::eol)
-        ;
-
-      pingResponsesHeader =
-        qi::lit("PING") >> +token >> qi::eol
-        ;
-
-      pingResponses =
-        *pingResponse
-        ;
-
-      pingResponse =
-        ( qi::uint_ >> qi::lit("bytes") >>
-          qi::lit("from") >> ipAddr[qi::_val = qi::_1] >>
-          -(qi::lit("%") >> ifaceName) >> qi::lit(':') >>
-          (qi::lit("icmp_req=") | qi::lit("icmp_seq=")) >> qi::uint_ >>
-          qi::lit("ttl=") >> qi::uint_ >>
-          qi::lit("time=") >> qi::float_ >>
-          (qi::lit("us") | qi::lit("ms") | qi::lit("s")) >>
-          -qi::lit("(DUP!)") >> qi::eol
-        )
-        | qi::lit("^") >> +token >> -qi::eol
-        | qi::eol
-        ;
-
-      pingStatisticsHeader =
-        qi::lit("---") >> +token >> qi::eol
-        ;
-
-      pingStatistics =
-        +(+token >> -qi::eol)
-        ;
-
-      ifaceName =
-        +(  qi::ascii::alnum
-          | qi::ascii::char_("-_.@")
-         )
-        ;
-
-      token =
-        +qi::ascii::graph
-        ;
-
-      BOOST_SPIRIT_DEBUG_NODES(
-          (start)
-          (pingResponsesHeader) (pingResponses) (pingResponse)
-          (pingStatisticsHeader) (pingStatistics)
-          (ifaceName)
-          //(token)
-          );
-    }
-
-    qi::rule<nmdp::IstreamIter, Result(), qi::ascii::blank_type>
-      start,
-      pingResponses;
-
-    qi::rule<nmdp::IstreamIter, nmdo::IpAddress(), qi::ascii::blank_type>
-      pingResponse;
-
-    qi::rule<nmdp::IstreamIter, qi::ascii::blank_type>
-      pingResponsesHeader,
-      pingStatisticsHeader,
-      pingStatistics;
-
-    qi::rule<nmdp::IstreamIter, std::string()>
-      ifaceName,
-      token;
-
-    nmdp::ParserIpAddress
-      ipAddr;
-};
-
+// =============================================================================
+// Import tool definition
+// =============================================================================
 template<typename P, typename R>
 class Tool : public nmdt::AbstractImportTool<P, R>
 {
-  public:
+  // ===========================================================================
+  // Variables
+  // ===========================================================================
+  private: // Variables should generally be private
+  protected: // Variables intended for internal/subclass API
+  public: // Variables should rarely appear at this scope
+
+
+  // ===========================================================================
+  // Constructors
+  // ===========================================================================
+  private: // Constructors should rarely appear at this scope
+  protected: // Constructors intended for internal/subclass API
+  public: // Constructors should generally be public
     Tool() : nmdt::AbstractImportTool<P, R>
-      ("ping", PROGRAM_NAME, PROGRAM_VERSION)
+      ("ping -n",       // command line tool imports data from
+       PROGRAM_NAME,    // program name (set in CMakeLists.txt)
+       PROGRAM_VERSION  // program version (set in CMakeLists.txt)
+      )
     {}
 
+
+  // ===========================================================================
+  // Methods
+  // ===========================================================================
+  private: // Methods part of internal API
+    // Overriden from AbstractImportTool
     void
     addToolOptions() override
     {
@@ -134,6 +76,7 @@ class Tool : public nmdt::AbstractImportTool<P, R>
         );
     }
 
+    // Overriden from AbstractImportTool
     void
     specificInserts(pqxx::transaction_base& t) override
     {
@@ -145,6 +88,9 @@ class Tool : public nmdt::AbstractImportTool<P, R>
         LOG_DEBUG << result.toDebugString() << std::endl;
       }
     }
+
+  protected: // Methods part of subclass API
+  public: // Methods part of public API
 };
 
 

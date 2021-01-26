@@ -48,7 +48,7 @@ jobs:
       
     - name: Prepare For Packaging
       run: |
-        echo ::set-env name=DATETIME::$(date +%Y%m%d.%H%M%S)
+        echo "DATETIME=$(date +%Y%m%d.%H%M%S)" >> $GITHUB_ENV
         find . -iname "*.deb" -print | zip --junk-paths artifacts -@
     
     - name: Upload All Debs Artifact

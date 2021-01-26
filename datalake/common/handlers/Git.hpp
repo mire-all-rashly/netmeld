@@ -44,6 +44,8 @@ namespace netmeld::datalake::handlers {
       const std::string  INGEST_TOOL_PREFIX  {"ingest-tool:"};
       const std::string  TOOL_ARGS_PREFIX    {"tool-args:"};
 
+      nmcu::FileManager& nmfm {nmcu::FileManager::getInstance()};
+
     protected: // Variables intended for internal/subclass API
     public: // Variables should rarely appear at this scope
 
@@ -54,7 +56,7 @@ namespace netmeld::datalake::handlers {
       Git();
     protected: // Constructors part of subclass API
     public: // Constructors part of public API
-      Git(const std::string&);
+      explicit Git(const std::string&);
 
     // =========================================================================
     // Methods
