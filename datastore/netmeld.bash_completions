@@ -1,0 +1,102 @@
+# Netmeld Bash completion shell script
+
+_netmeld_parse_options()
+{
+  local long_option word
+  for word in $1; do
+    case "${word}" in
+      --*)
+        [[ -n "${long_option}" ]] || long_option="${word}";
+        ;;
+    esac;
+  done;
+
+  [[ -n "${long_option}" ]] && printf "%s\n" "${long_option}"
+}
+
+_netmeld_parse_help()
+{
+  local line command;
+  command="${COMP_LINE%% *}";
+  eval $command --help | \
+    while read -r line; do
+      [[ "${line}" == -* ]] || continue;
+      _netmeld_parse_options "${line}";
+    done;
+}
+
+_netmeld_database_commands()
+{
+  local cur prev words cword;
+  _init_completion || return;
+
+  case "$prev" in
+    -v|--verbosity)
+      local OLDIFS="$IFS";
+      local IFS=$'\n';
+      local verbosity_values="0: OFF
+1: EMERGENCY
+2: ALERT
+3: CRITICAL
+4: ERROR
+5: WARNING
+6: NOTICE
+7: INFORMATIONAL
+8: DEBUG
+9: DEBUG_SPIRIT
+10: ALL";
+      COMPREPLY=( $( compgen -W "${verbosity_values}" -- "$cur" ) )
+      IFS="$OLDIFS";
+      if [[ ${#COMPREPLY[*]} -eq 1 ]]; then
+        COMPREPLY=( ${COMPREPLY[0]%%: *} )
+      fi;
+      return 0
+      ;;
+  esac;
+
+  if [[ "${cur}" == -* ]]; then
+    COMPREPLY=($(compgen -W "$(_netmeld_parse_help)" -- "${cur}"));
+    [[ -n "${COMPREPLY}" ]] && return 0;
+  fi;
+
+  _filedir
+}
+
+NMDB_COMMANDS=(
+  "nmdb-export-port-list"
+  "nmdb-export-query"
+  "nmdb-graph-ac"
+  "nmdb-graph-network"
+  "nmdb-import-brocade"
+  "nmdb-import-cisco"
+  "nmdb-import-cisco-wireless"
+  "nmdb-import-clw"
+  "nmdb-import-hosts"
+  "nmdb-import-ip-addr-show"
+  "nmdb-import-ipconfig"
+  "nmdb-import-ip-route-show"
+  "nmdb-import-iptables-save"
+  "nmdb-import-juniper-conf"
+  "nmdb-import-juniper-set"
+  "nmdb-import-nessus"
+  "nmdb-import-nmap"
+  "nmdb-import-pcap"
+  "nmdb-import-ping"
+  "nmdb-import-powerconnect"
+  "nmdb-import-show-cdp-neighbor"
+  "nmdb-import-show-inventory"
+  "nmdb-import-show-mac-address-table"
+  "nmdb-import-tshark"
+  "nmdb-import-vyos"
+  "nmdb-initialize"
+  "nmdb-insert-ac"
+  "nmdb-insert-address"
+  "nmdb-insert-device"
+  "nmdb-insert-device-hardware"
+  "nmdb-insert-network"
+  "nmdb-remove-tool-run"
+);
+
+for (( i=0; i < ${#NMDB_COMMANDS[@]}-1; i++ )); do
+  complete -F _netmeld_database_commands "${NMDB_COMMANDS[i]}";
+done;
